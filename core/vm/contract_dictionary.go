@@ -1,4 +1,4 @@
-package main
+package vm
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 
 // Dictioanary data structure
 type ContractDictionary struct {
-	contractToIdx map[common.Address]uint  // contract to index map for encoding
+	contractToIdx map[common.Address]uint32  // contract to index map for encoding
 	idxToContract []common.Address         // contract address slice for decoding 
 	mutex         sync.Mutex               // mutex for decode/encode
 }
@@ -19,22 +19,22 @@ type ContractDictionary struct {
 // Create new dictionary
 func NewContractDictionary() *ContractDictionary {
 	p := new(ContractDictionary)
-	p.contractToIdx = map[common.Address]uint{}
+	p.contractToIdx = map[common.Address]uint32{}
 	p.idxToContract = []common.Address{}
 	return p
 }
 
 // Encode an address in the dictionary to an index
-func (cd *ContractDictionary) Encode(addr common.Address) (uint, error) {
+func (cd *ContractDictionary) Encode(addr common.Address) (uint32, error) {
 	cd.mutex.Lock()
 	var (
-		idx uint
+		idx uint32
 		ok  bool
 		err error = nil
 	)
 	if idx, ok = cd.contractToIdx[addr]; !ok {
-		idx = uint(len(cd.idxToContract))
-		if idx != math.MaxUint {
+		idx = uint32(len(cd.idxToContract))
+		if idx != math.MaxUint32 {
 			cd.contractToIdx[addr] = idx
 			cd.idxToContract = append(cd.idxToContract, addr)
 		} else {
@@ -47,13 +47,13 @@ func (cd *ContractDictionary) Encode(addr common.Address) (uint, error) {
 }
 
 // Decode a dictionary index to an address
-func (cd *ContractDictionary) Decode(idx uint) (common.Address, error) {
+func (cd *ContractDictionary) Decode(idx uint32) (common.Address, error) {
 	cd.mutex.Lock()
 	var (
 		addr common.Address
 		err  error
 	)
-	if idx < uint(len(cd.idxToContract)) {
+	if idx < uint32(len(cd.idxToContract)) {
 		addr = cd.idxToContract[idx]
 		err = nil
 	} else {
@@ -86,7 +86,7 @@ func (cd *ContractDictionary) Write(filename string) {
 // Read dictionary from a binary file
 func (cd *ContractDictionary) Read(filename string) {
 	cd.mutex.Lock()
-	cd.contractToIdx = map[common.Address]uint{}
+	cd.contractToIdx = map[common.Address]uint32{}
 	cd.idxToContract = []common.Address{}
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
@@ -94,29 +94,22 @@ func (cd *ContractDictionary) Read(filename string) {
 	}
 	data := common.Address{}.Bytes()
 	for {
-		var n int
-		if n, err = f.Read(data); err != nil {
-			log.Fatal(err)
-		}
-		if n < len(data) {
-			if n != 0 {
-				log.Fatalf("Contract dictionary file is corrupted")
-			}
+		n, err := f.Read(data)
+		if n == 0 {
 			break
+		} else if n < len(data) || err != nil {
+			log.Fatalf("Contract dictionary file is corrupted")
 		}
 		addr := common.BytesToAddress(data)
-		idx := uint(len(cd.idxToContract))
-		if idx == math.MaxUint {
+		idx := uint32(len(cd.idxToContract))
+		if idx == math.MaxUint32 {
 			log.Fatalf("Too many entries in dictionary; file corrupted")
 		}
-		cd.contractToIdx[addr] = uint(len(cd.idxToContract))
+		cd.contractToIdx[addr] = uint32(len(cd.idxToContract))
 		cd.idxToContract = append(cd.idxToContract, addr)
 	}
 	if err := f.Close(); err != nil {
 		log.Fatal(err)
 	}
 	cd.mutex.Unlock()
-}
-
-func main() {
 }

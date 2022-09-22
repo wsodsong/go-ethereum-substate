@@ -21,6 +21,8 @@ import (
 	"testing"
 )
 
+// Encodes and decodes an address and compare whether the encoded and decoded address is the same.
+// In addition, the testcase checks whether the encoded address is assigned the zero index.
 func TestContractDictionarySimple1(t *testing.T) {
 	encodedAddr := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
 	dict := NewContractDictionary()
@@ -31,6 +33,8 @@ func TestContractDictionarySimple1(t *testing.T) {
 	}
 }
 
+// Encodes/decodes two addresses and checks that encoded/decoded addresses are the same. 
+// In addition, the testcase checks whether the encoded addresses have the zero and one index.
 func TestContractDictionarySimple2(t *testing.T) {
 	encodedAddr1 := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
 	encodedAddr2 := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F273")
@@ -47,7 +51,45 @@ func TestContractDictionarySimple2(t *testing.T) {
 	}
 }
 
-func TestContractDictionaryOverflow(t *testint T)
-{
-}
+// This is a negative test checking whether overflows can captured in the dictionary
+//func TestContractDictionaryOverflow(t *testing.T) {
+//	data := common.Address{}.Bytes()
+//	dict := NewContractDictionary()
+//	var i uint64
+//	for i=0; i < math.MaxUint32+1; i++ {
+//		for j:=0;j < common.AddressLength; j++ {
+//			if (data[j] <= 255) {
+//				data[j]++
+//				break
+//			} else {
+//				data[j] = 0
+//			}
+//		}
+//		addr := common.BytesToAddress(data)
+//		dict.Encode(addr)
+//	}
+//}
 
+// Encodes/decodes two addresses and checks that encoded/decoded addresses are the same. 
+// In addition, the testcase checks whether the encoded addresses have the zero and one index.
+func TestContractDictionaryReadWrite(t *testing.T) {
+	encodedAddr1 := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
+	encodedAddr2 := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F273")
+	wDict := NewContractDictionary()
+	idx1, err1 := wDict.Encode(encodedAddr1)
+	idx2, err2 := wDict.Encode(encodedAddr2)
+	wDict.Write("./test.dict")
+
+	rDict := NewContractDictionary()
+	rDict.Read("./test.dict")
+
+	decodedAddr1, err3 := rDict.Decode(idx1)
+	decodedAddr2, err4 := rDict.Decode(idx2)
+	if encodedAddr1 != decodedAddr1 || err1 != nil || err3 != nil || idx1 != 0 {
+		t.Fatalf("Encoding/Decoding is not symmetric")
+	}
+	if encodedAddr2 != decodedAddr2 || err2 != nil || err4 != nil || idx2 != 1 {
+		t.Fatalf("Encoding/Decoding is not symmetric")
+	}
+
+}

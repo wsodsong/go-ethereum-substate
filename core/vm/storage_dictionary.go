@@ -25,18 +25,18 @@ func NewStorageDictionary() *StorageDictionary {
 }
 
 // Encode an address in the dictionary to an index
-func (cd *StorageDictionary) Encode(addr common.Hash) (uint32, error) {
+func (cd *StorageDictionary) Encode(key common.Hash) (uint32, error) {
 	cd.mutex.Lock()
 	var (
 		idx uint32
 		ok  bool
 		err error = nil
 	)
-	if idx, ok = cd.storageToIdx[addr]; !ok {
+	if idx, ok = cd.storageToIdx[key]; !ok {
 		idx = uint32(len(cd.idxToStorage))
 		if idx != math.MaxUint32 {
-			cd.storageToIdx[addr] = idx
-			cd.idxToStorage = append(cd.idxToStorage, addr)
+			cd.storageToIdx[key] = idx
+			cd.idxToStorage = append(cd.idxToStorage, key)
 		} else {
 			idx = 0
 			err = errors.New("Storage dictionary exhausted")
@@ -50,18 +50,18 @@ func (cd *StorageDictionary) Encode(addr common.Hash) (uint32, error) {
 func (cd *StorageDictionary) Decode(idx uint32) (common.Hash, error) {
 	cd.mutex.Lock()
 	var (
-		addr common.Hash
+		key common.Hash
 		err  error
 	)
 	if idx < uint32(len(cd.idxToStorage)) {
-		addr = cd.idxToStorage[idx]
+		key = cd.idxToStorage[idx]
 		err = nil
 	} else {
-		addr = common.Hash{}
+		key = common.Hash{}
 		err = errors.New("Index out-of-bound")
 	}
 	cd.mutex.Unlock()
-	return addr, err
+	return key, err
 }
 
 // Write dictionary to a binary file
@@ -71,8 +71,8 @@ func (cd *StorageDictionary) Write(filename string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, addr := range cd.idxToStorage {
-		data := addr.Bytes()
+	for _, key := range cd.idxToStorage {
+		data := key.Bytes()
 		if _, err := f.Write(data); err != nil {
 			log.Fatal(err)
 		}
@@ -100,13 +100,13 @@ func (cd *StorageDictionary) Read(filename string) {
 		} else if n < len(data) || err != nil {
 			log.Fatalf("Storage dictionary file is corrupted")
 		}
-		addr := common.BytesToAddress(data)
+		key := common.BytesToHash(data)
 		idx := uint32(len(cd.idxToStorage))
 		if idx == math.MaxUint32 {
 			log.Fatalf("Too many entries in dictionary; file corrupted")
 		}
-		cd.storageToIdx[addr] = uint32(len(cd.idxToStorage))
-		cd.idxToStorage = append(cd.idxToStorage, addr)
+		cd.storageToIdx[key] = uint32(len(cd.idxToStorage))
+		cd.idxToStorage = append(cd.idxToStorage, key)
 	}
 	if err := f.Close(); err != nil {
 		log.Fatal(err)

@@ -19,13 +19,14 @@ package vm
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"testing"
+	"os"
 )
 
 // Encodes and decodes an address and compare whether the encoded and decoded address is the same.
 // In addition, the testcase checks whether the encoded address is assigned the zero index.
-func TestContractDictionarySimple1(t *testing.T) {
-	encodedAddr := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
-	dict := NewContractDictionary()
+func TestStorageDictionarySimple1(t *testing.T) {
+	encodedAddr := common.HexToHash("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
+	dict := NewStorageDictionary()
 	idx, err1 := dict.Encode(encodedAddr)
 	decodedAddr, err2 := dict.Decode(idx)
 	if encodedAddr != decodedAddr || err1 != nil || err2 != nil || idx != 0 {
@@ -35,10 +36,10 @@ func TestContractDictionarySimple1(t *testing.T) {
 
 // Encodes/decodes two addresses and checks that encoded/decoded addresses are the same. 
 // In addition, the testcase checks whether the encoded addresses have the zero and one index.
-func TestContractDictionarySimple2(t *testing.T) {
-	encodedAddr1 := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
-	encodedAddr2 := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F273")
-	dict := NewContractDictionary()
+func TestStorageDictionarySimple2(t *testing.T) {
+	encodedAddr1 := common.HexToHash("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
+	encodedAddr2 := common.HexToHash("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F273")
+	dict := NewStorageDictionary()
 	idx1, err1 := dict.Encode(encodedAddr1)
 	idx2, err2 := dict.Encode(encodedAddr2)
 	decodedAddr1, err3 := dict.Decode(idx1)
@@ -50,11 +51,28 @@ func TestContractDictionarySimple2(t *testing.T) {
 		t.Fatalf("Encoding/Decoding is not symmetric")
 	}
 }
+// Encodes one address twice and checks that the address is encored only once.
+// In addition, the testcase checks whether the encoded addresses have the zero index.
+func TestStorageDictionarySimple3(t *testing.T) {
+	encodedAddr1 := common.HexToHash("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
+	dict := NewStorageDictionary()
+	idx1, err1 := dict.Encode(encodedAddr1)
+	idx2, err2 := dict.Encode(encodedAddr1)
+	decodedAddr1, err3 := dict.Decode(idx1)
+	decodedAddr2, err4 := dict.Decode(idx2)
+	if encodedAddr1 != decodedAddr1 || err1 != nil || err3 != nil || idx1 != 0 {
+		t.Fatalf("Encoding/Decoding is not symmetric")
+	}
+	if encodedAddr1 != decodedAddr2 || err2 != nil || err4 != nil || idx2 != 0 {
+		t.Fatalf("Encoding/Decoding is not symmetric")
+	}
+}
+
 
 // This is a negative test checking whether overflows can captured in the dictionary
-//func TestContractDictionaryOverflow(t *testing.T) {
+//func TestStorageDictionaryOverflow(t *testing.T) {
 //	data := common.Address{}.Bytes()
-//	dict := NewContractDictionary()
+//	dict := NewStorageDictionary()
 //	var i uint64
 //	for i=0; i < math.MaxUint32+1; i++ {
 //		for j:=0;j < common.AddressLength; j++ {
@@ -72,16 +90,17 @@ func TestContractDictionarySimple2(t *testing.T) {
 
 // Encodes/decodes two addresses and checks that encoded/decoded addresses are the same. 
 // In addition, the testcase checks whether the encoded addresses have the zero and one index.
-func TestContractDictionaryReadWrite(t *testing.T) {
-	encodedAddr1 := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
-	encodedAddr2 := common.HexToAddress("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F273")
-	wDict := NewContractDictionary()
+func TestStorageDictionaryReadWrite(t *testing.T) {
+	filename := "./test.dict"
+	encodedAddr1 := common.HexToHash("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F272")
+	encodedAddr2 := common.HexToHash("0xdEcAf0562A19C9fFf21c9cEB476B2858E6f1F273")
+	wDict := NewStorageDictionary()
 	idx1, err1 := wDict.Encode(encodedAddr1)
 	idx2, err2 := wDict.Encode(encodedAddr2)
-	wDict.Write("./test.dict")
+	wDict.Write(filename)
 
-	rDict := NewContractDictionary()
-	rDict.Read("./test.dict")
+	rDict := NewStorageDictionary()
+	rDict.Read(filename)
 
 	decodedAddr1, err3 := rDict.Decode(idx1)
 	decodedAddr2, err4 := rDict.Decode(idx2)
@@ -91,5 +110,5 @@ func TestContractDictionaryReadWrite(t *testing.T) {
 	if encodedAddr2 != decodedAddr2 || err2 != nil || err4 != nil || idx2 != 1 {
 		t.Fatalf("Encoding/Decoding is not symmetric")
 	}
-
+	os.Remove(filename)
 }
